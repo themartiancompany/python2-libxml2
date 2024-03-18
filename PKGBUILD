@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0
+#
+# Maintainer: Truocolo <truocolo@aol.com>
 # Maintainer: Pellegrino Prevete <pellegrinoprevete@gmail.com>
 # Contributor: Levente Polyak <anthraxx[at]archlinux[dot]org>
 # Contributor: Jan de Groot <jgc@archlinux.org>
@@ -22,7 +25,9 @@ arch=(
   armv7h
   armv6l
 )
-license=(MIT)
+license=(
+  MIT
+)
 depends=(
   icu
   ncurses
@@ -35,7 +40,8 @@ depends=(
 makedepends=(
   git
 )
-_commit=7846b0a677f8d3ce72486125fa281e92ac9970e8  # tags/v2.9.14^0
+# tags/v2.9.14^0
+_commit=7846b0a677f8d3ce72486125fa281e92ac9970e8
 _w3_tests="https://www.w3.org/XML/Test/xmlts20130923.tar.gz"
 source=(
   "${pkgname}::git+${_url}.git#commit=$_commit"
@@ -49,92 +55,151 @@ sha256sums=(
 )
 
 pkgver() {
-  cd "${pkgname}"
-  git describe --tags \
-    | sed 's/-rc/rc/;s/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+  cd \
+    "${pkgname}"
+  git \
+    describe \
+    --tags | \
+    sed \
+      's/-rc/rc/;s/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
 }
 
 prepare() {
-  local _msg="Use xmlconf from conformance test suite"
-  mkdir -p build
-  ln -s xmlconf build/xmlconf || echo "${_msg}"
-
-  cd "${pkgname}"
-
-  # Take patches from https://src.fedoraproject.org/rpms/libxml2/tree/master
-  local src
-  for src in "${source[@]}"; do
+  local \
+    _msg="Use xmlconf from conformance test suite" \
+    _src
+  mkdir \
+    -p \
+      build
+  ln \
+    -s \
+    xmlconf \
+    build/xmlconf || \
+    echo \
+      "${_msg}"
+  cd \
+    "${pkgname}"
+  # Take patches from 
+  # https://src.fedoraproject.org/rpms/libxml2/tree/master
+  for src \
+    in "${source[@]}"; do
     src="${src%%::*}"
     src="${src##*/}"
-    [[ "${src}" = *.diff ]] || continue
-    echo "Applying patch ${src}..."
-    git apply -3 "../${src}"
+    [[ "${src}" = *.diff ]] || \
+      continue
+    echo \
+      "Applying patch ${src}..."
+    git \
+      apply \
+      -3 \
+      "../${src}"
   done
-
-  autoreconf -fiv
+  autoreconf \
+    -fiv
 }
 
-build() (
-  local _configure="../${pkgname}/configure"
-  local _configure_opts=(
+build() {
+  local \
+    _configure="../${pkgname}/configure" \
+    _cflags=() \
+    _configure_opts=()
+  _configure_opts=(
     --prefix=/usr
     --with-threads
     --with-history
     --with-python="/usr/bin/${_py}"
     --with-icu
   )
-  local _cflags=(
+  _cflags=(
     "-I/usr/include/${_pkg}-2.9"
   )
-  local _ldflags=(
+  _ldflags=(
     "-L/usr/lib/${_pkg}-2.9"
   )
-
-  cd build
+  cd \
+    build
 
   CFLAGS="${_cflags[*]}" \
   LDFLAGS="${_ldflags[*]}" \
-    "../${pkgname}/configure" "${_configure_opts[@]}"
-
-  sed -i -e 's/ -shared / -Wl,-O1,--as-needed\0 /g' libtool
+  "../${pkgname}/configure" \
+    "${_configure_opts[@]}"
+  sed \
+    -i \
+    -e \
+    's/ -shared / -Wl,-O1,--as-needed\0 /g' \
+    libtool
 
   CFLAGS="${_cflags[*]}" \
   LDFLAGS="${_ldflags[*]}" \
     make
-
-  find doc -type f -exec chmod 0644 {} +
-)
+  find \
+    doc \
+    -type \
+      f \
+    -exec \
+      chmod \
+        0644 \
+        {} \
+        +
+}
 
 check() {
   CFLAGS="${_cflags[*]}" \
   LDFLAGS="${_ldflags[*]}" \
-  make -C build check
+  make \
+    -C \
+      build \
+    check
 }
 
 package() {
-  make DESTDIR="${pkgdir}" -C build install
-  "${_py}" -m compileall \
-           -d /usr/lib "${pkgdir}/usr/lib"
-  "${_py}" -O \
-           -m compileall \
-           -d /usr/lib "${pkgdir}/usr/lib"
-
-  install -Dm 644 build/COPYING \
-          -t "${pkgdir}/usr/share/licenses/${pkgname}"
-
-  rm -rf "${pkgdir}/usr/bin/"
-  rm -rf "${pkgdir}/usr/bin/"
-  rm -rf "${pkgdir}/usr/include/${_pkg}/libxml"
-  rm -rf "${pkgdir}/usr/lib/cmake"
-  rm -rf "${pkgdir}/usr/lib/${_pkg}"*
-  rm -rf "${pkgdir}/usr/lib/pkgconfig"
-  rm -rf "${pkgdir}/usr/lib/xml2Conf.sh"
-  rm -rf "${pkgdir}/usr/share/aclocal"
-  rm -rf "${pkgdir}/usr/share/doc/${_pkg}"
-  rm -rf "${pkgdir}/usr/share/doc/${_pkg}-python-${pkgver}"
-  rm -rf "${pkgdir}/usr/share/gtk-doc/html/${_pkg}"
-  rm -rf "${pkgdir}/usr/share/man/man1"
-  rm -rf "${pkgdir}/usr/share/man/man3"
+  local \
+    _to_rm=()
+  make \
+    DESTDIR="${pkgdir}" \
+    -C \
+      build \
+    install
+  "${_py}" \
+    -m \
+      compileall \
+    -d \
+      /usr/lib \
+    "${pkgdir}/usr/lib"
+  "${_py}" \
+    -O \
+    -m \
+      compileall \
+    -d \
+      /usr/lib \
+  "${pkgdir}/usr/lib"
+  install \
+    -Dm644 \
+    build/COPYING \
+    -t \
+    "${pkgdir}/usr/share/licenses/${pkgname}"
+  _to_rm=(
+    "${pkgdir}/usr/bin/"
+    "${pkgdir}/usr/bin/"
+    "${pkgdir}/usr/include/${_pkg}/libxml"
+    "${pkgdir}/usr/lib/cmake"
+    "${pkgdir}/usr/lib/${_pkg}"*
+    "${pkgdir}/usr/lib/pkgconfig"
+    "${pkgdir}/usr/lib/xml2Conf.sh"
+    "${pkgdir}/usr/share/aclocal"
+    "${pkgdir}/usr/share/doc/${_pkg}"
+    "${pkgdir}/usr/share/doc/${_pkg}-python-${pkgver}"
+    "${pkgdir}/usr/share/gtk-doc/html/${_pkg}"
+    "${pkgdir}/usr/share/man/man1"
+    "${pkgdir}/usr/share/man/man3"
+  )
+  for _file \
+    in "${_to_rm[@]}"; do
+    printf \
+      "%s" \
+      "removing ${_file}"
+    rm -rf "${_file}"
+  done
 }
 
-# vim: ts=2 sw=2 et:
+# vim: ft=sh syn=sh et
